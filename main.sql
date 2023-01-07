@@ -112,14 +112,9 @@ ORDER BY medal DESC;
 
 /* 9 Identify which country won the most gold, most silver, most bronze medals and the most medals
 in each olympic games.*/
-crosstab function is part of a PostgreSQL extension called tablefunc.
-To call the crosstab function, you must first enable the tablefunc extension by executing the following SQL command:
-
 CREATE EXTENSION TABLEFUNC;
 
-17. Identify which country won the most gold, most silver, most bronze medals and the most medals in each olympic games.
-
-    with temp as
+WITH temp AS
     	(SELECT substring(games, 1, position(' - ' in games) - 1) as games
     		, substring(games, position(' - ' in games) + 3) as country
     		, coalesce(gold, 0) as gold
@@ -135,13 +130,13 @@ CREATE EXTENSION TABLEFUNC;
     				  order BY games,medal',
                   'values (''Bronze''), (''Gold''), (''Silver'')')
     			   AS FINAL_RESULT(games text, bronze bigint, gold bigint, silver bigint)),
-    	tot_medals as
+    	total_medals as
     		(SELECT games, nr.region as country, count(1) as total_medals
     		FROM olympics_history oh
     		JOIN olympics_noc_region nr ON nr.noc = oh.noc
     		where medal <> 'NA'
     		GROUP BY games,nr.region order BY 1, 2)
-    select distinct t.games
+    SELECT DISTINCT t.games
     	, concat(first_value(t.country) over(partition by t.games order by gold desc)
     			, ' - '
     			, first_value(t.gold) over(partition by t.games order by gold desc)) as Max_Gold
@@ -154,9 +149,9 @@ CREATE EXTENSION TABLEFUNC;
     	, concat(first_value(tm.country) over (partition by tm.games order by total_medals desc nulls last)
     			, ' - '
     			, first_value(tm.total_medals) over(partition by tm.games order by total_medals desc nulls last)) as Max_Medals
-    from temp t
-    join tot_medals tm on tm.games = t.games and tm.country = t.country
-    order by games;
+    FROM temp t
+    JOIN total_medals tm on tm.games = t.games and tm.country = t.country
+    ORDER BY games;
 	
 --10 Identify which country won the most gold, most silver and most bronze medals in each olympic games.
 
@@ -190,7 +185,7 @@ WITH temp as
     order by games;
 	
 --11 Which countries have never won gold medal but have won silver/bronze medals?	
-select * from (
+SELECT * FROM (
     	SELECT country, coalesce(gold,0) as gold, coalesce(silver,0) as silver, coalesce(bronze,0) as bronze
     		FROM CROSSTAB('SELECT nr.region as country
     					, medal, count(1) as total_medals
@@ -201,8 +196,8 @@ select * from (
                     'values (''Bronze''), (''Gold''), (''Silver'')')
     		AS FINAL_RESULT(country varchar,
     		bronze bigint, gold bigint, silver bigint)) x
-    where gold = 0 and (silver > 0 or bronze > 0)
-    order by gold desc nulls last, silver desc nulls last, bronze desc nulls last;
+    WHERE gold = 0 and (silver > 0 or bronze > 0)
+    ORDER BY gold desc nulls last, silver desc nulls last, bronze desc nulls last;
 	
 --13 Which Sports were just played only once in the olympics?
  WITH games AS
